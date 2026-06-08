@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 
 from src.api.dependencies import get_db, get_model
 from src.api.main import app
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

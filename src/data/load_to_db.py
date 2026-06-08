@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from src.data.db import engine, check_connection
+from src.data.db import check_connection, engine
 
 # Colonnes à exclure du CSV (métadonnées de simulation)
 STUDENTS_DROP = {"profile", "cohort_start", "cohort_end"}

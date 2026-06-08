@@ -12,7 +12,6 @@ from src.models.evaluate import (
     score_dataframe,
 )
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -119,7 +118,7 @@ def test_score_dataframe_adds_column():
 
 def test_score_dataframe_no_mutation():
     df = pd.DataFrame({"student_id": [1], "dropout_prob": [0.7]})
-    out = score_dataframe(df, threshold=0.5)
+    score_dataframe(df, threshold=0.5)
     assert "risk_label" not in df.columns   # original non muté
 
 

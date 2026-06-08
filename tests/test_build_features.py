@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 
 from src.features.build_features import (
-    build_weekly_features,
     add_rolling_features,
+    build_weekly_features,
     merge_student_info,
 )
 

@@ -12,25 +12,27 @@ import argparse
 import warnings
 from pathlib import Path
 
-import mlflow
-import mlflow.xgboost
+import joblib
+import matplotlib
 import numpy as np
 import optuna
 import pandas as pd
 import shap
 from loguru import logger
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
 from xgboost import XGBClassifier
-import joblib
-import matplotlib
+
+import mlflow
+import mlflow.xgboost
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from src.models.constants import FEATURE_COLS, MODELS_DIR_STR, TARGET
 from src.models.evaluate import full_report
-from src.models.constants import FEATURE_COLS, TARGET, MODELS_DIR_STR
 
 warnings.filterwarnings("ignore", category=UserWarning)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -201,7 +203,7 @@ def train(
         mlflow.log_metrics(metrics)
 
         # SHAP
-        shap_vals = compute_shap(final_model, X_te_pp, MODELS_DIR)
+        compute_shap(final_model, X_te_pp, MODELS_DIR)
         mlflow.log_artifact(str(MODELS_DIR / "shap_summary.png"))
 
         # Modèle XGBoost

@@ -8,10 +8,9 @@ from typing import Generator
 
 import joblib
 from loguru import logger
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from src.data.db import get_engine, get_session
-from sqlalchemy.orm import sessionmaker
 
 MODELS_DIR = Path("data/models")
 

@@ -14,17 +14,16 @@ from datetime import date
 from pathlib import Path
 
 import joblib
-import mlflow
-import mlflow.xgboost
 import numpy as np
 import pandas as pd
 from loguru import logger
 from sqlalchemy import text
 
+import mlflow
+import mlflow.xgboost
 from src.data.db import engine
+from src.models.constants import FEATURE_COLS, MODELS_DIR_STR, TARGET
 from src.models.evaluate import score_dataframe
-from src.models.constants import FEATURE_COLS, TARGET, MODELS_DIR_STR
-from pathlib import Path
 
 MODELS_DIR = Path(MODELS_DIR_STR)
 

@@ -5,20 +5,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.monitoring.fairness_report import (
-    add_age_group,
-    add_threshold_prediction,
-    compute_group_metrics,
-    compute_all_groups,
-    detect_violations,
-    FAIRNESS_THRESHOLD,
+from src.dashboard.data_loader import (
+    assign_clusters,
+    compute_engagement_score,
 )
 from src.monitoring.drift_report import _ks_drift
-from src.dashboard.data_loader import (
-    compute_engagement_score,
-    assign_clusters,
+from src.monitoring.fairness_report import (
+    FAIRNESS_THRESHOLD,
+    add_age_group,
+    add_threshold_prediction,
+    compute_all_groups,
+    compute_group_metrics,
+    detect_violations,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

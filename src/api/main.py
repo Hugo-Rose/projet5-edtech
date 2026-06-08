@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
 from src.api.dependencies import get_model
-from src.api.routes import students, cohorts, predictions, alerts
+from src.api.routes import alerts, cohorts, predictions, students
 
 
 @asynccontextmanager

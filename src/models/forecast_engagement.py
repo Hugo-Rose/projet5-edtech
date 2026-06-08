@@ -19,15 +19,15 @@ import argparse
 import warnings
 from pathlib import Path
 
-import mlflow
 import numpy as np
 import pandas as pd
 from loguru import logger
 from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 
+import mlflow
 from src.data.db import get_engine
-from src.models.forecast_store import save_forecasts_parquet, save_forecasts_db
+from src.models.forecast_store import save_forecasts_db, save_forecasts_parquet
 
 warnings.filterwarnings("ignore")
 

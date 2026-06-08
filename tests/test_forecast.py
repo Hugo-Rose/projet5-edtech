@@ -10,13 +10,12 @@ import pytest
 from prophet import Prophet
 
 from src.models.forecast_engagement import (
+    METRICS,
     build_model,
     fit_and_forecast,
     prepare_series,
     run_cv,
-    METRICS,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

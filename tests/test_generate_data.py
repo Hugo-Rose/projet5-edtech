@@ -3,10 +3,10 @@ import pandas as pd
 import pytest
 
 from src.data.generate_synthetic_data import (
-    generate_students,
-    generate_modules,
     COHORTS,
     MODULES_PER_COHORT,
+    generate_modules,
+    generate_students,
 )
 
 

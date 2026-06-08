@@ -182,7 +182,7 @@ def main(output_dir: str = "data/features", weeks_back: int = 0) -> pd.DataFrame
     save_to_parquet(wf, Path(output_dir))
 
     # Résumé
-    logger.info(f"\n=== Résumé features ===")
+    logger.info("\n=== Résumé features ===")
     logger.info(f"  Snapshots totaux   : {len(wf):,}")
     logger.info(f"  Étudiants couverts : {wf['student_id'].nunique():,}")
     logger.info(f"  Semaines           : {wf['week_start'].nunique():,}")

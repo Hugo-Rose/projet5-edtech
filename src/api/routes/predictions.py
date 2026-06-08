@@ -10,12 +10,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.api import crud
-from src.api.dependencies import get_db, get_model, ModelBundle
+from src.api.dependencies import ModelBundle, get_db, get_model
 from src.api.schemas import (
-    BatchPredictRequest, BatchPredictResponse, PredictionOut,
+    BatchPredictRequest,
+    BatchPredictResponse,
+    PredictionOut,
 )
-from src.models.evaluate import risk_label as compute_risk_label
 from src.models.constants import FEATURE_COLS
+from src.models.evaluate import risk_label as compute_risk_label
 
 router = APIRouter(prefix="/predictions", tags=["predictions"])
 

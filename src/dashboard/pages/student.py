@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
-
 
 RECOMMENDATIONS = {
     "Très engagé": [

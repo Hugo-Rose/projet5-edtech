@@ -172,10 +172,8 @@ def _mock_data(n_students: int = 150, n_weeks: int = 12) -> dict[str, pd.DataFra
 
     # Prédictions
     latest_wf = weekly.groupby("student_id").last().reset_index()
-    risk_map   = lambda p: (
-        "critical" if p > 0.65 else "high" if p > 0.40
-        else "medium" if p > 0.20 else "low"
-    )
+    def risk_map(p):
+        return "critical" if p > 0.65 else "high" if p > 0.40 else "medium" if p > 0.20 else "low"
     predictions = pd.DataFrame({
         "student_id":    latest_wf["student_id"],
         "dropout_prob":  latest_wf["dropout_risk_score"],

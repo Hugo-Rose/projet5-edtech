@@ -13,14 +13,15 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
-import mlflow
 import pandas as pd
 from loguru import logger
 
+import mlflow
+
 try:
-    from evidently.report import Report
-    from evidently.metric_preset import DataDriftPreset, TargetDriftPreset
     from evidently import ColumnMapping
+    from evidently.metric_preset import DataDriftPreset, TargetDriftPreset
+    from evidently.report import Report
     EVIDENTLY_OK = True
 except ImportError:
     EVIDENTLY_OK = False
