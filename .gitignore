@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Env
+.env
+
+# Data (raw volumineuse)
+data/raw/*.csv
+data/processed/*.csv
+data/features/*.parquet
+
+# MLflow
+mlflow/artifacts/
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Modèles entraînés
+data/models/
+
+# Rapports générés
+data/reports/
+
+# OS
+.DS_Store
+Thumbs.db
