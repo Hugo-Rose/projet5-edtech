@@ -29,7 +29,7 @@ import mlflow
 import mlflow.xgboost
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
 
 from src.models.constants import FEATURE_COLS, MODELS_DIR_STR, TARGET
 from src.models.evaluate import full_report

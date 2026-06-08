@@ -12,5 +12,8 @@ ignore = [
 ]
 exclude = ["notebooks/", ".venv/", "build/"]
 
+[lint.isort]
+known-first-party = ["src"]
+
 [lint.per-file-ignores]
 "tests/*" = ["F811"]
