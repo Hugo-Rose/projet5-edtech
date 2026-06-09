@@ -129,6 +129,28 @@ class AlertListResponse(BaseModel):
     alerts: list[AlertOut]
 
 
+# ── Recommandations ───────────────────────────────────────────────────────────
+
+class RecommendationItem(BaseModel):
+    rank:                 int
+    action_type:          str
+    title:                str
+    description:          str
+    current_value:        Optional[float] = None
+    target_value:         Optional[float] = None
+    correlation:          float
+    unit:                 str
+    expected_improvement: Optional[str] = None
+
+
+class RecommendationsResponse(BaseModel):
+    student_id:      int
+    cluster_id:      int
+    cluster_name:    str
+    recommendations: list[RecommendationItem]
+    computed_at:     Optional[datetime] = None
+
+
 # ── Santé ─────────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):

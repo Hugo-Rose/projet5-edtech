@@ -6,27 +6,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-RECOMMENDATIONS = {
-    "Très engagé": [
-        "Continuez sur cette lancée — votre progression est exemplaire.",
-        "Explorez les ressources avancées et les projets optionnels.",
-        "Participez au mentorat pour aider vos camarades.",
-    ],
-    "Engagé": [
-        "Bon engagement ! Augmentez légèrement la fréquence de vos connexions.",
-        "Révisez les quiz ratés pour consolider vos acquis.",
-        "Participez plus activement aux forums de discussion.",
-    ],
-    "Passif": [
-        "Essayez de vous connecter au moins 3 fois par semaine.",
-        "Commencez par les vidéos courtes pour reprendre le rythme.",
-        "Contactez votre référent pédagogique pour un point de suivi.",
-    ],
-    "À risque": [
-        "Un rendez-vous avec votre tuteur est fortement recommandé.",
-        "Rejoignez un groupe de travail pour retrouver de la motivation.",
-        "Des ressources de soutien personnalisées sont disponibles.",
-    ],
+ACTION_ICONS = {
+    "connections":   "🔗",
+    "time":          "⏱️",
+    "videos":        "🎬",
+    "quiz":          "📝",
+    "quiz_quality":  "🎯",
+    "forum":         "💬",
+    "assignments":   "📋",
 }
 
 GAUGE_COLORS = {
@@ -188,7 +175,56 @@ def render(data: dict[str, pd.DataFrame]) -> None:
 
     # ── Recommandations ───────────────────────────────────────────────────────
     st.subheader("Recommandations personnalisées")
-    recs = RECOMMENDATIONS.get(cluster_name, RECOMMENDATIONS["Engagé"])
-    for i, rec in enumerate(recs, 1):
-        icon = "✅" if i == 1 else "📌"
-        st.markdown(f"{icon} {rec}")
+    _render_recommendations(sid, data["weekly"], cluster_name)
+
+
+# ── Rendu recommandations ─────────────────────────────────────────────────────
+
+def _render_recommendations(
+    student_id:   int,
+    weekly_df:    pd.DataFrame,
+    cluster_name: str,
+) -> None:
+    from src.models.recommender import get_recommendations_for_student
+
+    with st.spinner("Calcul des recommandations..."):
+        result = get_recommendations_for_student(student_id, weekly_df)
+
+    if result is None or not result.recommendations:
+        st.info("Recommandations non disponibles — données insuffisantes.")
+        return
+
+    for rec in result.recommendations:
+        icon = ACTION_ICONS.get(rec.action_type, "📌")
+        with st.container():
+            col_icon, col_content, col_stats = st.columns([0.5, 4, 2])
+
+            with col_icon:
+                st.markdown(f"<h2 style='text-align:center;margin-top:8px'>{icon}</h2>",
+                            unsafe_allow_html=True)
+
+            with col_content:
+                st.markdown(f"**{rec.title}**")
+                st.caption(rec.description)
+                if rec.expected_improvement:
+                    st.markdown(
+                        f"<span style='color:#28a745;font-size:0.85em'>"
+                        f"📈 {rec.expected_improvement}</span>",
+                        unsafe_allow_html=True,
+                    )
+
+            with col_stats:
+                if rec.current_value is not None and rec.target_value is not None:
+                    st.metric(
+                        label=rec.unit,
+                        value=f"{rec.current_value:.1f}",
+                        delta=f"cible : {rec.target_value:.1f}",
+                        delta_color="off",
+                    )
+                elif rec.current_value is not None:
+                    st.metric(label=rec.unit, value=f"{rec.current_value:.1f}")
+
+            st.markdown(
+                "<hr style='margin:4px 0;border-color:#eee'>",
+                unsafe_allow_html=True,
+            )

@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-import numpy as np
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.api import crud
@@ -12,6 +13,7 @@ from src.api.dependencies import ModelBundle, get_db, get_model
 from src.api.schemas import (
     PredictionOut,
     PredictRequest,
+    RecommendationsResponse,
     StudentDetail,
     StudentListResponse,
 )
@@ -105,3 +107,69 @@ def predict_student(
         features_snapshot=dict(row),
     )
     return saved
+
+
+@router.get("/{student_id}/recommendations", response_model=RecommendationsResponse)
+def get_recommendations(
+    student_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne les 3 recommandations personnalisées basées sur le cluster K-Means
+    et la corrélation comportement → amélioration du score.
+    """
+    # Vérifier que l'étudiant existe
+    student = crud.get_student_by_id(db, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Étudiant introuvable")
+
+    # Charger les weekly_features depuis la DB
+    sql = text("""
+        SELECT wf.student_id, wf.week_start,
+               wf.login_count, wf.total_time_min, wf.videos_watched,
+               wf.quiz_attempts, wf.quiz_pass_rate, wf.avg_score,
+               wf.forum_posts, wf.assignments_on_time, wf.assignments_late
+        FROM weekly_features wf
+        JOIN students s ON s.student_id = wf.student_id
+        WHERE s.cohort_id = (SELECT cohort_id FROM students WHERE student_id = :sid)
+        ORDER BY wf.week_start
+    """)
+    rows = db.execute(sql, {"sid": student_id}).mappings().all()
+
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail="Aucune donnée hebdomadaire disponible.",
+        )
+
+    weekly_df = pd.DataFrame([dict(r) for r in rows])
+
+    from src.models.recommender import get_recommendations_for_student
+    result = get_recommendations_for_student(student_id, weekly_df)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Impossible de calculer des recommandations pour cet étudiant.",
+        )
+
+    return {
+        "student_id":      result.student_id,
+        "cluster_id":      result.cluster_id,
+        "cluster_name":    result.cluster_name,
+        "recommendations": [
+            {
+                "rank":                 r.rank,
+                "action_type":          r.action_type,
+                "title":                r.title,
+                "description":          r.description,
+                "current_value":        r.current_value,
+                "target_value":         r.target_value,
+                "correlation":          r.correlation,
+                "unit":                 r.unit,
+                "expected_improvement": r.expected_improvement,
+            }
+            for r in result.recommendations
+        ],
+        "computed_at": result.computed_at,
+    }
