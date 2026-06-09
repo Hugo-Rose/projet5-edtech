@@ -29,7 +29,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-ci.txt
 
+      - name: Cache CmdStan (Prophet backend)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmdstan
+          key: ${{ runner.os }}-cmdstan-2.37
+
+      - name: Install CmdStan if not cached
+        run: python -c "import cmdstanpy; cmdstanpy.install_cmdstan()" || true
+
       - name: Run tests with coverage
+        env:
+          MPLBACKEND: Agg
         run: |
           pytest tests/ \
             --cov=src \

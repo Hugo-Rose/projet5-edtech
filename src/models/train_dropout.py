@@ -12,8 +12,13 @@ import argparse
 import warnings
 from pathlib import Path
 
-import joblib
 import matplotlib
+matplotlib.use("Agg")  # doit précéder pyplot — pas de display en CI
+import matplotlib.pyplot as plt  # noqa: E402
+
+import joblib
+import mlflow
+import mlflow.xgboost
 import numpy as np
 import optuna
 import pandas as pd
@@ -24,12 +29,6 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-
-import mlflow
-import mlflow.xgboost
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 
 from src.models.constants import FEATURE_COLS, MODELS_DIR_STR, TARGET
 from src.models.evaluate import full_report
