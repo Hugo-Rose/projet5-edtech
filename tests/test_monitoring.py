@@ -172,7 +172,7 @@ def test_detect_violations_structure():
 
 # ── drift_report (KS fallback) ────────────────────────────────────────────────
 
-def test_ks_drift_no_drift_same_distribution():
+def test_ks_drift_returns_dict_of_dicts():
     rng = np.random.default_rng(0)
     ref = pd.DataFrame({"a": rng.normal(5, 1, 200),
                          "b": rng.uniform(0, 1, 200)})
@@ -181,6 +181,10 @@ def test_ks_drift_no_drift_same_distribution():
     result = _ks_drift(ref, cur, ["a", "b"])
     assert isinstance(result, dict)
     assert set(result.keys()) == {"a", "b"}
+    for col, info in result.items():
+        assert "drift_detected" in info
+        assert "drift_score" in info
+        assert isinstance(info["drift_score"], float)
 
 
 def test_ks_drift_detects_shift():
@@ -188,14 +192,33 @@ def test_ks_drift_detects_shift():
     ref = pd.DataFrame({"x": rng.normal(0, 1, 500)})
     cur = pd.DataFrame({"x": rng.normal(5, 1, 500)})   # forte dérive
     result = _ks_drift(ref, cur, ["x"])
-    assert result["x"]  # np.True_ ou True
+    assert result["x"]["drift_detected"] == True
 
 
 def test_ks_drift_too_short_returns_false():
     ref = pd.DataFrame({"x": [1.0, 2.0, 3.0]})
     cur = pd.DataFrame({"x": [4.0, 5.0, 6.0]})
     result = _ks_drift(ref, cur, ["x"])
-    assert result["x"] is False
+    assert result["x"]["drift_detected"] is False
+
+
+def test_ks_drift_score_above_alert_threshold():
+    from src.monitoring.drift_report import DRIFT_ALERT_THRESHOLD
+    rng = np.random.default_rng(1)
+    ref = pd.DataFrame({"y": rng.normal(0, 1, 1000)})
+    cur = pd.DataFrame({"y": rng.normal(4, 1, 1000)})
+    result = _ks_drift(ref, cur, ["y"])
+    assert result["y"]["drift_score"] > DRIFT_ALERT_THRESHOLD
+
+
+def test_ks_drift_no_shift_score_low():
+    from src.monitoring.drift_report import DRIFT_ALERT_THRESHOLD
+    rng = np.random.default_rng(2)
+    ref = pd.DataFrame({"z": rng.normal(0, 1, 1000)})
+    cur = pd.DataFrame({"z": rng.normal(0, 1, 1000)})
+    result = _ks_drift(ref, cur, ["z"])
+    # Distributions identiques → score KS proche de 0, très en dessous du seuil
+    assert result["z"]["drift_score"] < DRIFT_ALERT_THRESHOLD
 
 
 # ── data_loader ───────────────────────────────────────────────────────────────

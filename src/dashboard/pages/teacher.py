@@ -103,8 +103,8 @@ def render(data: dict[str, pd.DataFrame]) -> None:
                 students["cluster_name"].value_counts().reset_index()
             )
             cluster_counts.columns = ["Profil", "Effectif"]
-            fig_clust = px.bar(
-                cluster_counts, x="Profil", y="Effectif",
+            fig_clust = px.pie(
+                cluster_counts, names="Profil", values="Effectif",
                 color="Profil",
                 color_discrete_map={
                     "Très engagé": "#28a745",
@@ -112,12 +112,12 @@ def render(data: dict[str, pd.DataFrame]) -> None:
                     "Passif":      "#ffc107",
                     "À risque":    "#dc3545",
                 },
-                text="Effectif",
+                hole=0.35,
             )
-            fig_clust.update_traces(textposition="outside")
+            fig_clust.update_traces(textinfo="percent+label")
             fig_clust.update_layout(
                 showlegend=False, height=340,
-                margin=dict(l=20, r=20, t=30, b=40),
+                margin=dict(l=20, r=20, t=30, b=20),
             )
             st.plotly_chart(fig_clust, use_container_width=True)
         else:

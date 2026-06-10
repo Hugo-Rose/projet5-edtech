@@ -17,6 +17,7 @@ data/features/*.parquet
 
 # MLflow
 mlflow/artifacts/
+mlruns/
 
 # IDE
 .vscode/

@@ -43,6 +43,12 @@ def render(data: dict[str, pd.DataFrame]) -> None:
 
     st.divider()
 
+    # ── Génération rapport drift ──────────────────────────────────────────────
+    st.subheader("Rapport de drift")
+    _render_drift_button()
+
+    st.divider()
+
     # ── MLflow runs ───────────────────────────────────────────────────────────
     st.subheader("Derniers runs MLflow")
     _render_mlflow_runs()
@@ -178,6 +184,36 @@ def _inline_fairness(students: pd.DataFrame) -> None:
         grp["Prob. moy."] = grp["Prob. moy."].map("{:.1%}".format)
         st.markdown(f"**{attr}**")
         st.dataframe(grp, use_container_width=True, hide_index=True)
+
+
+def _render_drift_button() -> None:
+    col_btn, col_status = st.columns([1, 3])
+    with col_btn:
+        run_clicked = st.button("⚡ Générer rapport drift", type="primary")
+    with col_status:
+        reports = sorted(REPORTS_DIR.glob("drift_*.html"), reverse=True)
+        if reports:
+            st.caption(f"Dernier rapport : `{reports[0].name}`")
+
+    if run_clicked:
+        try:
+            from src.monitoring.drift_report import run_drift_report
+            with st.spinner("Génération du rapport drift en cours…"):
+                result = run_drift_report()
+            if result:
+                st.success(
+                    f"Rapport généré — {result.get('n_drift', 0)} feature(s) "
+                    f"en drift ({result.get('pct_drift', 0):.1f}%) | "
+                    f"score moyen : {result.get('avg_score', 0):.4f}"
+                )
+                report_path = Path(result.get("report_path", ""))
+                if report_path.exists():
+                    with open(report_path, encoding="utf-8") as f:
+                        st.components.v1.html(f.read(), height=500, scrolling=True)
+            else:
+                st.warning("Rapport vide — données insuffisantes ou base inaccessible.")
+        except Exception as e:
+            st.error(f"Erreur lors de la génération : {e}")
 
 
 def _render_mlflow_runs() -> None:

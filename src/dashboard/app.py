@@ -13,6 +13,28 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Header logo ───────────────────────────────────────────────────────────────
+st.markdown(
+    """
+    <div style="
+        display:flex;align-items:center;gap:14px;
+        padding:.6rem 0 .2rem 0;margin-bottom:.5rem;
+        border-bottom:1px solid #2d3139;
+    ">
+      <span style="font-size:2.4rem;line-height:1">🎓</span>
+      <div>
+        <span style="font-size:1.45rem;font-weight:700;color:#fafafa;
+                     letter-spacing:.5px">EdTech Analytics</span><br>
+        <span style="font-size:.78rem;color:#8b949e;letter-spacing:.3px">
+          Plateforme d'analyse pédagogique &amp; prédiction décrochage
+        </span>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ── Chargement données (cache 5 min) ──────────────────────────────────────────
 @st.cache_data(ttl=300, show_spinner="Chargement des données…")
 def _get_data():

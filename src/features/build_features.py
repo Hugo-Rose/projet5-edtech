@@ -103,22 +103,50 @@ def add_rolling_features(wf: pd.DataFrame) -> pd.DataFrame:
 # ── Jointure données statiques étudiants ─────────────────────────────────────
 
 def merge_student_info(wf: pd.DataFrame, students: pd.DataFrame) -> pd.DataFrame:
-    meta = students[["student_id", "cohort_id", "status", "dropout_date",
-                      "entry_grade", "has_job", "scholarship", "distance_km",
-                      "age", "gender"]]
+    # Colonnes requises toujours présentes
+    required = ["student_id"]
+    # Colonnes optionnelles — ajout de valeurs par défaut si absentes
+    optional_defaults: dict = {
+        "cohort_id":     1,
+        "status":        "enrolled",
+        "dropout_date":  pd.NaT,
+        "entry_grade":   12.0,
+        "has_job":       0,
+        "scholarship":   0,
+        "distance_km":   0.0,
+        "age":           23,
+        "gender":        "Other",
+    }
+    for col, default in optional_defaults.items():
+        if col not in students.columns:
+            students = students.copy()
+            students[col] = default
+
+    cols_to_use = required + [c for c in optional_defaults if c in students.columns]
+    meta = students[cols_to_use]
     df = wf.merge(meta, on="student_id", how="left")
 
-    # Label binaire pour ML : décrochage survenu après cette semaine ?
-    df["dropout_date"] = pd.to_datetime(df["dropout_date"])
-    df["week_start"]   = pd.to_datetime(df["week_start"])
-    df["label_dropout"] = (
-        (df["status"] == "dropped_out") &
-        (df["dropout_date"] >= df["week_start"])
-    ).astype(int)
+    # Remplissage des valeurs manquantes après merge
+    for col, default in optional_defaults.items():
+        if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
+            df[col] = df[col].fillna(default if not pd.isna(default) else 0)
+
+    # Label binaire pour ML
+    df["week_start"] = pd.to_datetime(df["week_start"])
+    if "label_dropout" not in df.columns:
+        # Si déjà présent dans wf (source UCI/OULAD), on le conserve
+        if "dropout_date" in df.columns and df["dropout_date"].notna().any():
+            df["dropout_date"] = pd.to_datetime(df["dropout_date"])
+            df["label_dropout"] = (
+                (df["status"] == "dropped_out") &
+                (df["dropout_date"] >= df["week_start"])
+            ).astype(int)
+        else:
+            df["label_dropout"] = (df["status"] == "dropped_out").astype(int)
 
     # Encodage gender
-    df["gender_enc"] = df["gender"].map({"M": 0, "F": 1, "Other": 2}).fillna(-1).astype(int)
-    df["has_job"]    = df["has_job"].astype(int)
+    df["gender_enc"]  = df["gender"].map({"M": 0, "F": 1, "Other": 2}).fillna(-1).astype(int)
+    df["has_job"]     = df["has_job"].astype(int)
     df["scholarship"] = df["scholarship"].astype(int)
 
     return df
