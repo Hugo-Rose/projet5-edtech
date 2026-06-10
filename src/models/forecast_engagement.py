@@ -65,7 +65,7 @@ SQL_COHORTS = "SELECT cohort_id, name FROM cohorts ORDER BY cohort_id"
 def load_cohort_series(cohort_id: int) -> pd.DataFrame:
     """Charge la série temporelle hebdo d'une cohorte depuis PostgreSQL."""
     engine = get_engine()
-    df = pd.read_sql(SQL_COHORT_WEEKLY, engine, params={"cohort_id": cohort_id})
+    df = pd.read_sql(SQL_COHORT_WEEKLY, get_engine(), params={"cohort_id": cohort_id})
     df["ds"] = pd.to_datetime(df["ds"])
     return df
 
@@ -212,7 +212,7 @@ def run_forecasts(
     mlflow.set_experiment(experiment_name)
 
     engine = get_engine()
-    cohorts = pd.read_sql(SQL_COHORTS, engine)
+    cohorts = pd.read_sql(SQL_COHORTS, get_engine())
     if cohorts.empty:
         logger.error("Aucune cohorte en base. Chargez d'abord les données.")
         raise SystemExit(1)

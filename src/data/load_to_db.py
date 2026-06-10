@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from src.data.db import check_connection, engine
+from src.data.db import check_connection, get_engine
 
 # Colonnes à exclure du CSV (métadonnées de simulation)
 STUDENTS_DROP = {"profile", "cohort_start", "cohort_end"}
@@ -47,7 +47,7 @@ def _load_table(table: str, csv_path: Path, drop_cols: set | None,
         if "date" in col or col.endswith("_ts") or col == "event_ts":
             df[col] = pd.to_datetime(df[col], errors="coerce")
 
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         if truncate:
             conn.execute(
                 __import__("sqlalchemy").text(f"TRUNCATE TABLE {table} CASCADE")
@@ -58,7 +58,7 @@ def _load_table(table: str, csv_path: Path, drop_cols: set | None,
     t0 = time.time()
     df.to_sql(
         table,
-        engine,
+        get_engine(),
         if_exists="append",
         index=False,
         chunksize=CHUNK_SIZE,
@@ -82,7 +82,7 @@ def main(input_dir: str = "data/raw", truncate: bool = False) -> None:
     # Ordre inversé pour TRUNCATE CASCADE (évite les erreurs FK)
     if truncate:
         for table, _, _ in reversed(LOAD_ORDER):
-            with engine.connect() as conn:
+            with get_engine().connect() as conn:
                 conn.execute(
                     __import__("sqlalchemy").text(f"TRUNCATE TABLE {table} CASCADE")
                 )

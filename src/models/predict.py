@@ -21,7 +21,7 @@ from sqlalchemy import text
 
 import mlflow
 import mlflow.xgboost
-from src.data.db import engine
+from src.data.db import get_engine
 from src.models.constants import FEATURE_COLS, MODELS_DIR_STR, TARGET
 from src.models.evaluate import score_dataframe
 
@@ -94,7 +94,8 @@ def save_predictions(preds: pd.DataFrame) -> None:
     preds_db["predicted_at"] = pd.Timestamp.now()
 
     preds_db.to_sql(
-        "predictions", engine,
+        "predictions",
+        get_engine(),
         if_exists="append", index=False,
         chunksize=10_000, method="multi",
     )
@@ -103,7 +104,7 @@ def save_predictions(preds: pd.DataFrame) -> None:
 
 def update_weekly_features_risk(preds: pd.DataFrame) -> None:
     """Met à jour dropout_risk_score dans weekly_features."""
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         for _, row in preds.iterrows():
             conn.execute(text("""
                 UPDATE weekly_features
@@ -137,7 +138,8 @@ def generate_alerts(preds: pd.DataFrame) -> None:
         "triggered_at": pd.Timestamp.now(),
     })
     alerts_db.to_sql(
-        "alerts", engine,
+        "alerts",
+        get_engine(),
         if_exists="append", index=False,
         chunksize=5_000, method="multi",
     )

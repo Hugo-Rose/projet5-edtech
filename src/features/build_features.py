@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from src.data.db import engine
+from src.data.db import get_engine
 
 PARQUET_OUT = Path("data/features")
 
@@ -135,7 +135,7 @@ def save_to_db(wf: pd.DataFrame) -> None:
     subset = wf[cols_db].copy()
     subset["week_start"] = subset["week_start"].dt.date
 
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         conn.execute(
             __import__("sqlalchemy").text(
                 "TRUNCATE TABLE weekly_features"
@@ -144,7 +144,8 @@ def save_to_db(wf: pd.DataFrame) -> None:
         conn.commit()
 
     subset.to_sql(
-        "weekly_features", engine,
+        "weekly_features",
+        get_engine(),
         if_exists="append", index=False,
         chunksize=50_000, method="multi",
     )
@@ -158,36 +159,174 @@ def save_to_parquet(wf: pd.DataFrame, output_dir: Path) -> None:
     logger.success(f"Parquet exporté → {path}  ({path.stat().st_size / 1e6:.1f} Mo)")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Loaders par source ────────────────────────────────────────────────────────
 
-def main(output_dir: str = "data/features", weeks_back: int = 0) -> pd.DataFrame:
-    logger.info("=== Feature Engineering — weekly_features ===")
-
+def _load_from_db(weeks_back: int = 0) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Source par défaut : PostgreSQL lms_events."""
     logger.info("Lecture lms_events depuis PostgreSQL...")
-    events = pd.read_sql(SQL_EVENTS, engine)
-
+    events = pd.read_sql(SQL_EVENTS, get_engine())
     if weeks_back > 0:
         cutoff = events["week_start"].max() - pd.Timedelta(weeks=weeks_back)
         events = events[events["week_start"] >= cutoff]
         logger.info(f"Filtré sur les {weeks_back} dernières semaines")
+    students = pd.read_sql(SQL_STUDENTS, get_engine())
+    return events, students
 
-    logger.info("Lecture students...")
-    students = pd.read_sql(SQL_STUDENTS, engine)
+
+def _load_from_uci(raw_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Source UCI : lit data/raw/uci_dropout.csv (weekly snapshots pré-calculés)
+    ou le génère à la volée si absent.
+    """
+    weekly_path  = raw_dir / "uci_dropout.csv"
+    student_path = raw_dir / "uci_students.csv"
+
+    if not weekly_path.exists():
+        logger.info("Fichier UCI absent — téléchargement en cours...")
+        from src.data.load_uci_dropout import main as load_uci
+        load_uci(str(raw_dir))
+
+    logger.info(f"Lecture UCI weekly features : {weekly_path}")
+    weekly   = pd.read_csv(weekly_path, parse_dates=["week_start"])
+    students = pd.read_csv(student_path) if student_path.exists() else pd.DataFrame()
+
+    # weekly UCI est déjà agrégé — on le remet dans le format events-like
+    # pour pouvoir passer par build_weekly_features standard.
+    # On simule des événements à partir des colonnes agrégées.
+    events = _expand_weekly_to_events(weekly)
+    return events, students
+
+
+def _expand_weekly_to_events(weekly: pd.DataFrame) -> pd.DataFrame:
+    """
+    Reconstitue un DataFrame events-like depuis des weekly features pré-agrégées.
+    Permet de réutiliser build_weekly_features sans duplication de code.
+    """
+    rows = []
+    for _, r in weekly.iterrows():
+        sid = int(r["student_id"])
+        ws  = r["week_start"]
+        for _ in range(int(r.get("login_count", 0))):
+            rows.append({"student_id": sid, "event_type": "login",
+                         "event_ts": ws, "duration_sec": 2700,
+                         "score": None, "week_start": ws})
+        for _ in range(int(r.get("videos_watched", 0))):
+            rows.append({"student_id": sid, "event_type": "video_view",
+                         "event_ts": ws, "duration_sec": 900,
+                         "score": None, "week_start": ws})
+        n_att = int(r.get("quiz_attempts", 0))
+        qpr   = float(r.get("quiz_pass_rate") or 0)
+        for i in range(n_att):
+            passed = i < int(n_att * qpr)
+            sc = float(r.get("avg_score") or 60)
+            rows.append({"student_id": sid, "event_type": "quiz_attempt",
+                         "event_ts": ws, "duration_sec": 600,
+                         "score": sc, "week_start": ws})
+            rows.append({"student_id": sid,
+                         "event_type": "quiz_pass" if passed else "quiz_fail",
+                         "event_ts": ws, "duration_sec": None,
+                         "score": sc, "week_start": ws})
+        for _ in range(int(r.get("assignments_on_time", 0))):
+            rows.append({"student_id": sid, "event_type": "assignment_submit",
+                         "event_ts": ws, "duration_sec": None,
+                         "score": float(r.get("avg_score") or 65), "week_start": ws})
+        for _ in range(int(r.get("assignments_late", 0))):
+            rows.append({"student_id": sid, "event_type": "assignment_late",
+                         "event_ts": ws, "duration_sec": None,
+                         "score": float(r.get("avg_score") or 50), "week_start": ws})
+
+    return pd.DataFrame(rows) if rows else pd.DataFrame(
+        columns=["student_id", "event_type", "event_ts",
+                 "duration_sec", "score", "week_start"]
+    )
+
+
+def _load_from_oulad(raw_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Source OULAD : lit data/raw/oulad_weekly.parquet (pré-agrégé).
+    Génère à la volée si absent.
+    """
+    weekly_path  = raw_dir / "oulad_weekly.parquet"
+    student_path = raw_dir / "oulad_students.csv"
+
+    if not weekly_path.exists():
+        logger.info("Fichier OULAD absent — téléchargement en cours...")
+        from src.data.load_oulad import main as load_oulad
+        load_oulad(str(raw_dir))
+
+    logger.info(f"Lecture OULAD weekly features : {weekly_path}")
+    weekly   = pd.read_parquet(weekly_path)
+    students = pd.read_csv(student_path) if student_path.exists() else pd.DataFrame()
+
+    events = _expand_weekly_to_events(weekly)
+    return events, students
+
+
+def _load_from_synthetic(raw_dir: Path,
+                         n_students: int = 1000) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fallback : génère des données synthétiques si aucun dataset réel n'est dispo."""
+    logger.warning("Mode fallback : génération de données synthétiques...")
+    from src.data.generate_synthetic_data import (
+        generate_students, generate_modules, generate_lms_events, COHORTS
+    )
+    students_df = generate_students(n_students)
+    modules_df  = generate_modules()
+    events_df   = generate_lms_events(students_df, modules_df)
+    return events_df, students_df
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+SOURCE_CHOICES = ("db", "uci", "oulad", "synthetic")
+
+
+def main(
+    output_dir: str = "data/features",
+    weeks_back: int = 0,
+    source:     str = "db",
+    raw_dir:    str = "data/raw",
+) -> pd.DataFrame:
+    logger.info(f"=== Feature Engineering — source={source} ===")
+
+    raw = Path(raw_dir)
+
+    if source == "db":
+        events, students = _load_from_db(weeks_back)
+    elif source == "uci":
+        events, students = _load_from_uci(raw)
+    elif source == "oulad":
+        events, students = _load_from_oulad(raw)
+    elif source == "synthetic":
+        events, students = _load_from_synthetic(raw)
+    else:
+        raise ValueError(f"Source inconnue : {source!r}. Choisir parmi {SOURCE_CHOICES}")
+
+    if events.empty:
+        logger.error("Aucun événement chargé — abandon.")
+        raise SystemExit(1)
 
     wf = build_weekly_features(events)
     wf = add_rolling_features(wf)
-    wf = merge_student_info(wf, students)
 
-    save_to_db(wf)
-    save_to_parquet(wf, Path(output_dir))
+    if not students.empty:
+        wf = merge_student_info(wf, students)
 
-    # Résumé
+    if source == "db":
+        save_to_db(wf)
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    parquet_name = f"weekly_features_{source}.parquet" if source != "db" \
+                   else "weekly_features.parquet"
+    wf.to_parquet(out / parquet_name, index=False)
+
     logger.info("\n=== Résumé features ===")
+    logger.info(f"  Source             : {source}")
     logger.info(f"  Snapshots totaux   : {len(wf):,}")
-    logger.info(f"  Étudiants couverts : {wf['student_id'].nunique():,}")
+    logger.info(f"  Etudiants couverts : {wf['student_id'].nunique():,}")
     logger.info(f"  Semaines           : {wf['week_start'].nunique():,}")
-    logger.info(f"  Taux label=1 (drop): {wf['label_dropout'].mean()*100:.1f}%")
-    logger.info(f"  Colonnes           : {list(wf.columns)}")
+    if "label_dropout" in wf.columns:
+        logger.info(f"  Taux label=1 (drop): {wf['label_dropout'].mean()*100:.1f}%")
 
     return wf
 
@@ -196,6 +335,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output",     default="data/features")
     parser.add_argument("--weeks-back", type=int, default=0,
-                        help="0 = tout l'historique")
+                        help="0 = tout l'historique (source=db uniquement)")
+    parser.add_argument("--source",     default="db", choices=SOURCE_CHOICES,
+                        help="Source des données : db | uci | oulad | synthetic")
+    parser.add_argument("--raw-dir",    default="data/raw")
     args = parser.parse_args()
-    main(output_dir=args.output, weeks_back=args.weeks_back)
+    main(output_dir=args.output, weeks_back=args.weeks_back,
+         source=args.source, raw_dir=args.raw_dir)

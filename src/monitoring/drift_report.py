@@ -49,7 +49,7 @@ def load_features_window(week_start: date, n_weeks: int) -> pd.DataFrame:
         WHERE wf.week_start >= %(start)s AND wf.week_start < %(end)s
     """
     start = week_start - timedelta(weeks=n_weeks)
-    df = pd.read_sql(sql, engine, params={"start": start, "end": week_start})
+    df = pd.read_sql(sql, get_engine(), params={"start": start, "end": week_start})
     return df
 
 
@@ -57,7 +57,7 @@ def load_current_week(week_start: date | None = None) -> tuple[pd.DataFrame, dat
     engine = get_engine()
     if week_start is None:
         row = pd.read_sql(
-            "SELECT MAX(week_start) AS w FROM weekly_features", engine
+            "SELECT MAX(week_start) AS w FROM weekly_features", get_engine()
         )
         week_start = row["w"].iloc[0]
     sql = """
@@ -66,7 +66,7 @@ def load_current_week(week_start: date | None = None) -> tuple[pd.DataFrame, dat
         JOIN students s ON s.student_id = wf.student_id
         WHERE wf.week_start = %(w)s
     """
-    df = pd.read_sql(sql, engine, params={"w": week_start})
+    df = pd.read_sql(sql, get_engine(), params={"w": week_start})
     return df, week_start
 
 

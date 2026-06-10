@@ -80,7 +80,7 @@ def _from_db() -> dict[str, pd.DataFrame]:
     students = pd.read_sql("SELECT * FROM students", engine)
     cohorts  = pd.read_sql("SELECT * FROM cohorts",  engine)
     weekly   = pd.read_sql(
-        "SELECT * FROM weekly_features ORDER BY week_start", engine
+        "SELECT * FROM weekly_features ORDER BY week_start", get_engine()
     )
     preds = pd.read_sql("""
         SELECT DISTINCT ON (student_id)

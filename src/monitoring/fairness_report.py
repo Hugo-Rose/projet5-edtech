@@ -61,7 +61,7 @@ def load_fairness_data(week_start: date | None = None) -> pd.DataFrame:
         )
     """
     params = {"w": week_start} if week_start else {}
-    df = pd.read_sql(sql, engine, params=params)
+    df = pd.read_sql(sql, get_engine(), params=params)
     return df
 
 

@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_ef_ds      ON engagement_forecasts(ds);
 
 def ensure_table() -> None:
     engine = get_engine()
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         for stmt in CREATE_TABLE_SQL.strip().split(";"):
             stmt = stmt.strip()
             if stmt:
@@ -57,7 +57,7 @@ def save_forecasts_db(df: pd.DataFrame) -> None:
     subset["ds"] = pd.to_datetime(subset["ds"]).dt.date
 
     # Upsert : on conflict → update yhat
-    with engine.connect() as conn:
+    with get_engine().connect() as conn:
         conn.execute(text("""
             DELETE FROM engagement_forecasts
             WHERE (cohort_id, metric) IN (
@@ -68,7 +68,8 @@ def save_forecasts_db(df: pd.DataFrame) -> None:
         conn.commit()
 
     subset.to_sql(
-        "engagement_forecasts", engine,
+        "engagement_forecasts",
+        get_engine(),
         if_exists="append", index=False,
         chunksize=5_000, method="multi",
     )
@@ -100,4 +101,4 @@ def load_forecasts(
         WHERE {" AND ".join(filters)}
         ORDER BY cohort_id, metric, ds
     """
-    return pd.read_sql(sql, engine, params=params)
+    return pd.read_sql(sql, get_engine(), params=params)

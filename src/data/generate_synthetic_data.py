@@ -21,13 +21,13 @@ rng = np.random.default_rng(42)
 
 COHORTS = [
     {"cohort_id": 1, "name": "Promo 2023 - Data Science",
-     "start": date(2023, 9, 4),  "end": date(2025, 6, 30),  "capacity": 35},
+     "start_date": date(2023, 9, 4),  "end_date": date(2025, 6, 30),  "capacity": 35},
     {"cohort_id": 2, "name": "Promo 2024 - Développement Web",
-     "start": date(2024, 9, 2),  "end": date(2026, 6, 30),  "capacity": 40},
+     "start_date": date(2024, 9, 2),  "end_date": date(2026, 6, 30),  "capacity": 40},
     {"cohort_id": 3, "name": "Promo 2024 - Cybersécurité",
-     "start": date(2024, 9, 2),  "end": date(2026, 6, 30),  "capacity": 30},
+     "start_date": date(2024, 9, 2),  "end_date": date(2026, 6, 30),  "capacity": 30},
     {"cohort_id": 4, "name": "Promo 2025 - Data Science",
-     "start": date(2025, 9, 1),  "end": date(2027, 6, 30),  "capacity": 35},
+     "start_date": date(2025, 9, 1),  "end_date": date(2027, 6, 30),  "capacity": 35},
 ]
 
 MODULES_PER_COHORT = 8
@@ -98,13 +98,13 @@ def generate_students(n: int) -> pd.DataFrame:
         # Statut final
         dropout = rng.random() < p["dropout_prob"]
         if dropout:
-            max_days = (cohort["end"] - cohort["start"]).days
+            max_days = (cohort["end_date"] - cohort["start_date"]).days
             dropout_offset = int(rng.integers(30, max(31, max_days // 2)))
-            dropout_date = cohort["start"] + timedelta(days=dropout_offset)
+            dropout_date = cohort["start_date"] + timedelta(days=dropout_offset)
             status = "dropped_out"
         else:
             dropout_date = None
-            status = "enrolled" if cohort["end"] > date(2026, 6, 8) else "graduated"
+            status = "enrolled" if cohort["end_date"] > date(2026, 6, 8) else "graduated"
 
         rows.append({
             "student_id":      i,
@@ -118,12 +118,12 @@ def generate_students(n: int) -> pd.DataFrame:
             "scholarship":     scholarship,
             "distance_km":     distance_km,
             "entry_grade":     entry_grade,
-            "enrollment_date": cohort["start"],
+            "enrollment_date": cohort["start_date"],
             "status":          status,
             "dropout_date":    dropout_date,
             "profile":         profile,          # colonne interne (non exportée vers SQL)
-            "cohort_start":    cohort["start"],
-            "cohort_end":      cohort["end"],
+            "cohort_start":    cohort["start_date"],
+            "cohort_end":      cohort["end_date"],
         })
     return pd.DataFrame(rows)
 
@@ -317,7 +317,7 @@ def generate_lms_events(students_df: pd.DataFrame,
 def save(df: pd.DataFrame, name: str, output_dir: Path) -> None:
     path = output_dir / f"{name}.csv"
     df.to_csv(path, index=False)
-    print(f"  Saved {len(df):>10,} rows  →  {path}")
+    print(f"  Saved {len(df):>10,} rows  ->  {path}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
