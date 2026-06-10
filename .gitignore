@@ -33,6 +33,10 @@ data/models/
 # Rapports générés
 data/reports/
 
+# Logs temporaires
+*.log
+C*Temp*.log
+
 # OS
 .DS_Store
 Thumbs.db
